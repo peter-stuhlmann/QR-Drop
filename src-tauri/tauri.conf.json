@@ -1,0 +1,50 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "QR Drop",
+  "mainBinaryName": "QR Drop",
+  "version": "../package.json",
+  "identifier": "app.qrdrop.desktop",
+  "build": {
+    "beforeDevCommand": "pnpm dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "pnpm build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [],
+    "withGlobalTauri": false,
+    "security": {
+      "csp": "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; connect-src ipc: http://ipc.localhost"
+    },
+    "macOSPrivateApi": true
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis", "app", "dmg"],
+    "category": "Utility",
+    "shortDescription": "Dateien per QR-Code aufs Handy senden",
+    "longDescription": "Rechtsklick auf eine Datei, QR-Code scannen, fertig. Ohne App, ohne Cloud, nur im eigenen WLAN.",
+    "copyright": "© 2026 Peter R. Stuhlmann",
+    "publisher": "Peter R. Stuhlmann",
+    "homepage": "https://github.com/peter-stuhlmann/QR-Drop",
+    "license": "MIT",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDNBMTdENUZCRkM3QTNFNUIKUldSYlBucjgrOVVYT2hGbXZnbi9OTlhTRFVMdEhFbDFqUGdOS2JSRlRKYzdkdFNLRndlcFR1OTkK",
+      "endpoints": [
+        "https://github.com/peter-stuhlmann/QR-Drop/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
+  }
+}

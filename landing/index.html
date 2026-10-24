@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="robots" content="noindex">
+<title>QR Drop</title>
+<style>
+__COMMON_CSS__
+/* Download page (computer → phone): one file, ZIP or text. */
+.preview{width:100%;aspect-ratio:3/2;border-radius:18px;object-fit:cover;background:rgba(255,255,255,.06);display:block}
+.tile.large{width:112px;height:112px;border-radius:28px;margin-bottom:6px}
+.tile.large svg{width:48px;height:48px}
+.tile.archive{background:linear-gradient(135deg,#ffbf59,#fa8066);box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 12px 30px rgba(255,140,77,.45)}
+.tile.video{background:linear-gradient(135deg,#cc66f2,#ff6b6b)}
+.tile.document,.tile.text{background:linear-gradient(135deg,#4dccf2,#7c80f7)}
+.tile.file,.tile.audio{background:linear-gradient(135deg,#999eb3,#6b6b85)}
+.tile.secret{background:linear-gradient(135deg,#cc66f2,#7c80f7)}
+.after{width:100%;display:flex;flex-direction:column;align-items:center;gap:10px}
+.status{display:flex;align-items:center;gap:8px;margin-top:8px;font-weight:600;color:#8cf2b3}
+.status i{width:22px;height:22px;border-radius:50%;background:var(--ok);display:grid;place-items:center}
+.status svg{width:13px;height:13px;stroke:#fff;stroke-width:3.2}
+/* Outcome unknown (link closed without a confirmed download): no checkmark. */
+.status.neutral{color:var(--text-2);font-weight:500}
+.status.neutral i{display:none}
+.hint{width:100%;display:flex;align-items:center;gap:12px;text-align:left;padding:12px 14px;border-radius:16px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);font-size:13px;color:rgba(255,255,255,.85)}
+.hint b{color:#fff;font-weight:600}
+.hint .app{flex:none;width:36px;height:36px;border-radius:9px;background:#408cff;display:grid;place-items:center}
+.hint .app svg{width:20px;height:20px;fill:#fff;stroke:#fff}
+.link{background:none;border:0;color:#b8baff;font-family:inherit;font-weight:500;font-size:13px;cursor:pointer;padding:6px;text-decoration:none}
+.textbox{width:100%;max-height:42vh;overflow:auto;text-align:left;padding:14px 16px;border-radius:16px;background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.12);font-size:16px;line-height:1.45;white-space:pre-wrap;word-break:break-word;-webkit-user-select:text;user-select:text}
+.textbox.secret{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:20px;letter-spacing:.04em;text-align:center}
+.row{display:flex;gap:10px;width:100%}
+/* Helper field for the copy fallback: selectable, but never visible. */
+.offscreen{position:fixed;top:0;left:0;opacity:0;font-size:16px}
+</style>
+</head>
+<body>
+<script id="share-data" type="application/json">__SHARE_DATA__</script>
+<main>
+  <div class="brand"><svg viewBox="0 0 24 24"><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16h-3a2 2 0 0 0-2 2v3M12 7v3a2 2 0 0 1-2 2H7M16 12h1M12 21v-1"/></svg>QR Drop</div>
+
+  <section class="card" id="filecard" hidden>
+    <img class="preview" id="preview" alt="" hidden>
+    <div class="tile large" id="tile" hidden></div>
+    <h1 id="name"></h1>
+    <p class="meta" id="meta"></p>
+    <a class="btn" id="download" href="#" download>
+      <svg viewBox="0 0 24 24"><path d="M12 15V3M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5"/></svg>
+      <span data-t="download"></span>
+    </a>
+    <div class="after" id="after" hidden>
+      <div class="status" id="status"><i><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></i><span id="state" data-t="started"></span></div>
+      <div class="hint">
+        <span class="app"><svg viewBox="0 0 24 24"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg></span>
+        <span id="hint"></span>
+      </div>
+      <button class="link" id="again" type="button" data-t="again"></button>
+    </div>
+    <p class="small" id="validity"></p>
+  </section>
+
+  <section class="card" id="textcard" hidden>
+    <div class="tile large" id="texttile"></div>
+    <h1 id="texttitle"></h1>
+    <p class="meta" id="textmeta"></p>
+    <div class="textbox" id="textbox" aria-live="polite"></div>
+    <div class="row">
+      <button class="btn ghost" id="reveal" type="button" hidden></button>
+      <button class="btn" id="copy" type="button">
+        <svg viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+        <span id="copylabel" data-t="copy"></span>
+      </button>
+    </div>
+    <p class="small" id="textnote" data-t="once"></p>
+  </section>
+
+  <section class="card" id="gone" hidden>
+    <div class="tile expired"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div>
+    <h1 id="goneTitle"></h1>
+    <p class="meta" id="goneText"></p>
+  </section>
+</main>
+<footer><svg viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><span data-t="local"></span></footer>
+
+<script>
+(function(){
+  "use strict";
+  __COMMON_JS__
+
+  var t = setUpTexts({
+    de: {
+      download: "Herunterladen", started: "Download gestartet", again: "Erneut herunterladen",
+      finished: "Fertig – die Datei ist auf deinem Handy",
+      closed: "Der Link ist jetzt geschlossen. Fehlt die Datei, erstelle am Computer einen neuen QR-Code.",
+      goneText: "Erstelle am Computer einfach einen neuen QR-Code.",
+      usedTitle: "Dieser Link wurde schon benutzt",
+      usedText: "Jeder Code funktioniert nur einmal. Erstelle am Computer einfach einen neuen QR-Code.",
+      expiredTitle: "Dieser Link ist abgelaufen",
+      expiredText: "Aus Sicherheitsgründen gilt ein Code nur kurze Zeit. Erstelle am Computer einfach einen neuen QR-Code.",
+      files: function(n){ return n === 1 ? "1 Datei" : n + " Dateien"; },
+      zip: "ZIP-Archiv",
+      validFor: function(m){ return m <= 1 ? "Noch weniger als 1 Minute gültig" : "Noch " + m + " Min. gültig"; },
+      ios: "Die Datei findest du in der App <b>„Dateien“</b> unter <b>„Downloads“</b>.",
+      android: "Die Datei findest du in den <b>Benachrichtigungen</b> oder in der App <b>„Dateien“</b> unter <b>„Downloads“</b>.",
+      other: "Die Datei liegt in deinem <b>Downloads</b>-Ordner.",
+      kinds: { image: "Bild", video: "Video", audio: "Audio", document: "Dokument", archive: "Archiv", file: "Datei" },
+      text: "Text", secret: "Passwort", chars: function(n){ return n === 1 ? "1 Zeichen" : n + " Zeichen"; },
+      copy: "Kopieren", copied: "Kopiert", show: "Anzeigen", hide: "Verbergen", loading: "Wird geladen …",
+      loadFail: "Keine Verbindung zum Computer. Bitte noch einmal tippen.",
+      once: "Dieser Link funktioniert nur einmal – kopiere den Text jetzt.",
+      copyFail: "Text gedrückt halten und „Kopieren“ wählen."
+    },
+    en: {
+      download: "Download", started: "Download started", again: "Download again",
+      finished: "Done – the file is on your phone",
+      closed: "The link is closed now. If the file is missing, create a new QR code on your computer.",
+      goneText: "Simply create a new QR code on your computer.",
+      usedTitle: "This link has already been used",
+      usedText: "Every code works only once. Simply create a new QR code on your computer.",
+      expiredTitle: "This link has expired",
+      expiredText: "For your security a code is only valid for a short time. Simply create a new QR code on your computer.",
+      files: function(n){ return n === 1 ? "1 file" : n + " files"; },
+      zip: "ZIP archive",
+      validFor: function(m){ return m <= 1 ? "Valid for less than a minute" : "Valid for " + m + " more min."; },
+      ios: "You'll find the file in the <b>Files</b> app under <b>Downloads</b>.",
+      android: "You'll find the file in your <b>notifications</b> or in the <b>Files</b> app under <b>Downloads</b>.",
+      other: "The file is in your <b>Downloads</b> folder.",
+      kinds: { image: "Image", video: "Video", audio: "Audio", document: "Document", archive: "Archive", file: "File" },
+      text: "Text", secret: "Password", chars: function(n){ return n === 1 ? "1 character" : n + " characters"; },
+      copy: "Copy", copied: "Copied", show: "Show", hide: "Hide", loading: "Loading …",
+      loadFail: "No connection to the computer. Please tap again.",
+      once: "This link only works once – copy the text now.",
+      copyFail: "Press and hold the text, then choose “Copy”."
+    }
+  });
+
+  /* Lucide icon paths (static markup, never data from the share). */
+  var ICONS = {
+    image: '<rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
+    video: '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 3v18M3 7.5h4M3 12h18M3 16.5h4M17 3v18M17 7.5h4M17 16.5h4"/>',
+    audio: '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',
+    document: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4M16 13H8M16 17H8M10 9H8"/>',
+    archive: '<circle cx="15" cy="19" r="2"/><path d="M20.9 19.8A2 2 0 0 0 22 18V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h5.1M15 11v-1M15 17v-2"/>',
+    file: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/>',
+    text: '<path d="M17 6.1H3M21 12.1H3M15.1 18H3"/>',
+    secret: '<path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5"/>'
+  };
+  /* Always the same mask: its length must not hint at the password's. */
+  var SECRET_MASK = "••••••••";
+  var STATUS_POLL_MS = 1500;
+
+  var data = readShareData();
+
+  function showTile(tile, kind) {
+    tile.className = "tile large " + kind;
+    tile.innerHTML = '<svg viewBox="0 0 24 24">' + ICONS[kind] + "</svg>";
+    tile.hidden = false;
+  }
+
+  /* Asks the computer whether the code still works: cb("alive") while it
+     does, cb("gone", reason) once it was used ("done"), ran out ("expired")
+     or is unknown, cb("offline") if QR Drop quit or the Wi-Fi hiccups. */
+  function queryStatus(cb) {
+    fetch(sharePath + "/status", { cache: "no-store" }).then(function(res) {
+      if (res.status !== 404) { cb("alive"); return; }
+      res.json().then(
+        function(body) { cb("gone", body && body.reason); },
+        function() { cb("gone", "unknown"); }
+      );
+    }, function() { cb("offline"); });
+  }
+
+  function showGone(reason) {
+    var key = reason === "done" ? "used" : reason === "expired" ? "expired" : "gone";
+    showGoneCard(t[key + "Title"], t[key + "Text"]);
+  }
+
+  /* ---- Files and ZIPs ---- */
+
+  var countdownTimer = 0;
+  var downloadEnded = false;
+  var watching = false;
+
+  function showFile() {
+    byId("filecard").hidden = false;
+    byId("name").textContent = data.name;
+    var details = data.isZip ? t.files(data.fileCount) + " · " + t.zip : t.kinds[data.kind] || t.kinds.file;
+    byId("meta").textContent = formatSize(data.size) + " · " + details;
+
+    var tile = byId("tile");
+    var kind = ICONS[data.kind] ? data.kind : "file";
+    if (data.hasPreview) {
+      var img = byId("preview");
+      img.onload = function() { img.hidden = false; };
+      img.onerror = function() { img.hidden = true; showTile(tile, kind); };
+      img.src = sharePath + "/preview";
+    } else {
+      showTile(tile, kind);
+    }
+
+    // iPadOS reports itself as a Mac; touch support gives it away.
+    var ua = navigator.userAgent || "";
+    var isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    byId("hint").innerHTML = isIOS ? t.ios : /Android/i.test(ua) ? t.android : t.other;
+
+    var link = byId("download");
+    link.href = sharePath + "/file";
+    link.setAttribute("download", data.name);
+    link.addEventListener("click", function() {
+      // A running download is never cut off at expiry: the countdown no longer applies.
+      stopCountdown();
+      // Let the browser start the download before the button disappears.
+      setTimeout(function() { link.hidden = true; byId("after").hidden = false; }, 250);
+      watchDownload();
+    });
+    byId("again").addEventListener("click", function() {
+      queryStatus(function(state, reason) {
+        if (state === "alive") location.href = sharePath + "/file";
+        else endDownload(reason === "done");
+      });
+    });
+    startCountdown();
+  }
+
+  function startCountdown() {
+    var deadline = Date.now() + (data.expiresIn || 0) * 1000;
+    var label = byId("validity");
+    (function tick() {
+      var left = deadline - Date.now();
+      if (left <= 0) { showGone("expired"); return; }
+      label.textContent = t.validFor(Math.ceil(left / 60000));
+      countdownTimer = setTimeout(tick, Math.min(15000, left));
+    })();
+  }
+
+  function stopCountdown() {
+    clearTimeout(countdownTimer);
+    byId("validity").hidden = true;
+  }
+
+  /* The page cannot see the download itself. The code works for exactly one
+     complete download; the computer then ends the share and QR Drop quits
+     about 3 s later, so polling every 1.5 s normally sees "done" first.
+     Anything else (expired, unknown, computer gone) does not prove that the
+     file arrived, so the page then says so neutrally instead of "Done". */
+  function watchDownload() {
+    if (watching) return;
+    watching = true;
+    var offlineInARow = 0;
+    (function poll() {
+      queryStatus(function(state, reason) {
+        offlineInARow = state === "offline" ? offlineInARow + 1 : 0;
+        if (state === "alive" || (state === "offline" && offlineInARow < 3)) {
+          setTimeout(poll, STATUS_POLL_MS);
+          return;
+        }
+        endDownload(reason === "done");
+      });
+    })();
+  }
+
+  function endDownload(arrived) {
+    if (downloadEnded) return;
+    downloadEnded = true;
+    byId("state").textContent = arrived ? t.finished : t.closed;
+    byId("status").classList.toggle("neutral", !arrived);
+    byId("again").hidden = true;
+  }
+
+  /* ---- Texts and passwords ---- */
+
+  /* The page data only says that there is a text. Fetching it uses the share
+     up (single use), so that happens when the text is about to be shown:
+     right away for normal texts, on "Show" or "Copy" for passwords. */
+  var takenText = null;
+  var taking = false;
+
+  function showText() {
+    var kind = data.secret ? "secret" : "text";
+    var box = byId("textbox");
+    var revealButton = byId("reveal");
+    var copyButton = byId("copy");
+    var copyLabel = byId("copylabel");
+    var note = byId("textnote");
+    var revealed = !data.secret;
+
+    byId("textcard").hidden = false;
+    showTile(byId("texttile"), kind);
+    byId("texttitle").textContent = t[kind];
+    var meta = byId("textmeta");
+    // A password's length is part of the secret: never show it.
+    if (data.secret) meta.hidden = true;
+    else meta.textContent = t.chars(data.chars);
+    if (data.secret) box.className = "textbox secret";
+
+    function render() {
+      if (takenText !== null && revealed) box.textContent = takenText;
+      else box.textContent = data.secret ? SECRET_MASK : taking ? t.loading : "";
+      revealButton.textContent = revealed && takenText !== null ? t.hide : t.show;
+    }
+
+    function take(onText) {
+      if (takenText !== null) { onText(takenText); return; }
+      if (taking) return;
+      taking = true;
+      copyButton.disabled = revealButton.disabled = true;
+      render();
+      var settle = function() {
+        taking = false;
+        copyButton.disabled = revealButton.disabled = false;
+      };
+      var failed = function() {
+        settle();
+        note.textContent = t.loadFail;
+        render();
+      };
+      fetch(sharePath + "/take", { method: "POST", cache: "no-store" }).then(function(res) {
+        if (res.status === 404) {
+          // Used up or expired in the meantime: the status tells which.
+          queryStatus(function(state, reason) { showGone(state === "gone" ? reason : "unknown"); });
+          return;
+        }
+        res.json().then(function(body) {
+          if (!res.ok || !body || typeof body.text !== "string") { failed(); return; }
+          settle();
+          takenText = body.text;
+          note.textContent = t.once;
+          onText(takenText);
+        }, failed);
+      }, failed);
+    }
+
+    function selectText() {
+      var range = document.createRange();
+      range.selectNodeContents(box);
+      var selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
+
+    if (data.secret) {
+      revealButton.hidden = false;
+      revealButton.addEventListener("click", function() {
+        take(function() { revealed = !revealed; render(); });
+      });
+    }
+    copyButton.addEventListener("click", function() {
+      // Without a fetch in between the copy runs within the tap, which some
+      // browsers require; after a fetch it may fail and fall back to selecting.
+      take(function(text) {
+        copyText(text).then(function(ok) {
+          if (ok) {
+            copyButton.classList.add("ok");
+            copyLabel.textContent = t.copied + " ✓";
+            setTimeout(function() { copyButton.classList.remove("ok"); copyLabel.textContent = t.copy; }, 2500);
+          } else {
+            revealed = true;
+            render();
+            selectText();
+            note.textContent = t.copyFail;
+          }
+        });
+      });
+    });
+
+    render();
+    if (!data.secret) take(render);
+  }
+
+  /* Clipboard: the page is plain http in the LAN, where navigator.clipboard
+     is unavailable -- execCommand("copy") on a selected field still works. */
+  function copyFallback(text) {
+    var field = document.createElement("textarea");
+    field.value = text;
+    field.className = "offscreen";
+    // iOS only copies from an editable, read-only field with a range selection.
+    field.contentEditable = "true";
+    field.readOnly = true;
+    document.body.appendChild(field);
+    var range = document.createRange();
+    range.selectNodeContents(field);
+    var selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+    try { field.setSelectionRange(0, text.length); } catch (e) { /* not supported: the range above suffices */ }
+    var ok = false;
+    try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+    document.body.removeChild(field);
+    selection.removeAllRanges();
+    return ok;
+  }
+
+  function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) {
+      return navigator.clipboard.writeText(text).then(
+        function() { return true; },
+        function() { return copyFallback(text); }
+      );
+    }
+    return Promise.resolve(copyFallback(text));
+  }
+
+  /* ---- Start ---- */
+
+  if (!data.valid) {
+    showGone("unknown");
+    // Refine the neutral message, e.g. "already used" after a reload.
+    queryStatus(function(state, reason) { if (state === "gone") showGone(reason); });
+  } else if (data.isText) {
+    showText();
+  } else {
+    showFile();
+  }
+})();
+</script>
+</body>
+</html>

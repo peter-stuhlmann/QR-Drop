@@ -1,0 +1,74 @@
+[package]
+name = "qr-drop"
+version = "0.1.0"
+description = "Dateien per QR-Code aufs Handy senden"
+authors = ["Peter R. Stuhlmann"]
+license = "MIT"
+repository = "https://github.com/peter-stuhlmann/QR-Drop"
+edition = "2021"
+rust-version = "1.83"
+
+[lib]
+name = "qr_drop_lib"
+# Desktop only: staticlib/cdylib would only be needed for mobile targets.
+crate-type = ["rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["macos-private-api"] }
+tauri-plugin-single-instance = "2"
+tauri-plugin-opener = "2"
+tauri-plugin-os = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-log = "2"
+tauri-plugin-clipboard-manager = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+log = "0.4"
+tokio = { version = "1", features = ["rt-multi-thread", "net", "fs", "io-util", "sync", "time"] }
+tokio-util = { version = "0.7", features = ["io"] }
+futures-util = { version = "0.3", default-features = false, features = ["std"] }
+bytes = "1"
+axum = { version = "0.8", default-features = false, features = ["http1", "tokio", "query"] }
+# Own accept loop with header/idle timeouts and a connection limit, which
+# axum::serve cannot configure. All three are already in the tree via axum.
+hyper = { version = "1", features = ["http1", "server"] }
+hyper-util = { version = "0.1", features = ["tokio"] }
+tower-service = "0.3"
+# SHA-256 hashes of the inline scripts/styles for the landing page CSP
+# (already in the tree via tauri-codegen).
+sha2 = "0.10"
+qrcode = { version = "0.14", default-features = false, features = ["svg"] }
+local-ip-address = "0.6"
+mime_guess = "2"
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp", "gif"] }
+getrandom = "0.3"
+base64 = "0.22"
+percent-encoding = "2"
+flate2 = "1"
+crc32fast = "1"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+tauri-plugin-updater = "2"
+
+# Free disk space before an upload (both already in the dependency tree).
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = ["Win32_Storage_FileSystem"] }
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[dev-dependencies]
+# `#[tokio::test]` only.
+tokio = { version = "1", features = ["macros"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "stream"] }
+zip = { version = "2", default-features = false, features = ["deflate"] }
+tempfile = "3"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+panic = "abort"
+strip = true

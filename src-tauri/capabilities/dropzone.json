@@ -1,0 +1,14 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "dropzone",
+  "description": "Drop-Zone: neue Freigaben und Empfang starten, Updates suchen und installieren.",
+  "windows": ["dropzone"],
+  "permissions": [
+    "allow-share-paths",
+    "allow-share-clipboard",
+    "allow-receive-from-phone",
+    "allow-pick-files",
+    "allow-check-update",
+    "allow-install-update"
+  ]
+}

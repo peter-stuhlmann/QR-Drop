@@ -1,0 +1,15 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "bundle": {
+    "resources": {
+      "resources/macos/": "macos/"
+    },
+    "macOS": {
+      "minimumSystemVersion": "12.0",
+      "files": {
+        "Resources/de.lproj/InfoPlist.strings": "./de.lproj/InfoPlist.strings",
+        "Resources/en.lproj/InfoPlist.strings": "./en.lproj/InfoPlist.strings"
+      }
+    }
+  }
+}

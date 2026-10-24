@@ -1,0 +1,13 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Basis für alle Fenster: Events empfangen (window-gebundene share://-Events, Drag & Drop, Update-Fortschritt), eigenes Fenster schließen und über die Titelleiste ziehen. Doppelklick auf die Titelleiste ruft internal-toggle-maximize auf, das bei nicht skalierbaren Fenstern nichts tut. Plattform und OS-Version liest @tauri-apps/plugin-os aus seinem Init-Skript, ohne IPC.",
+  "windows": ["share-*", "dropzone", "welcome"],
+  "permissions": [
+    "core:event:allow-listen",
+    "core:event:allow-unlisten",
+    "core:window:allow-close",
+    "core:window:allow-start-dragging",
+    "core:window:allow-internal-toggle-maximize"
+  ]
+}

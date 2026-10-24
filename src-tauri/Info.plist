@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Merged into the app bundle's Info.plist by Tauri.
+  QR Drop accepts any file or folder ("Öffnen mit", drag onto the Dock icon,
+  Quick Action) without becoming the default app for anything.
+  The texts are the English development-region defaults; de.lproj and
+  en.lproj/InfoPlist.strings localise them (see tauri.macos.conf.json).
+-->
+<plist version="1.0">
+<dict>
+  <key>CFBundleDocumentTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleTypeName</key>
+      <string>File or folder</string>
+      <key>CFBundleTypeRole</key>
+      <string>Viewer</string>
+      <key>LSHandlerRank</key>
+      <string>Alternate</string>
+      <key>LSItemContentTypes</key>
+      <array>
+        <string>public.item</string>
+        <string>public.folder</string>
+      </array>
+    </dict>
+  </array>
+  <key>NSLocalNetworkUsageDescription</key>
+  <string>QR Drop sends files over your Wi-Fi straight to your phone.</string>
+</dict>
+</plist>

@@ -1,0 +1,162 @@
+@import "tailwindcss";
+@import "./tokens.css";
+
+@theme {
+  --font-sans: var(--font-family-ui);
+}
+
+/* Type scale from tokens.css as utilities: text-title, text-filename, ... */
+@theme inline {
+  --text-title: var(--font-size-title);
+  --text-filename: var(--font-size-filename);
+  --text-body: var(--font-size-body);
+  --text-caption: var(--font-size-caption);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  background: transparent;
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--font-family-ui);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: default;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* The window surface. Native vibrancy/Mica sits underneath. */
+.glass-window {
+  position: relative;
+  height: 100%;
+  box-sizing: border-box;
+  background: var(--surface-window);
+  overflow: hidden;
+}
+
+/* macOS: transparent window, rounded like the vibrancy view. */
+.os-macos .glass-window {
+  border-radius: var(--radius-window);
+  box-shadow:
+    inset 0 0 0 1px var(--border-glass-shadow),
+    inset 0 1px 0 var(--border-glass-highlight);
+}
+
+/* Windows 11 rounds the window itself; Windows 10 has no Mica -> CSS glass. */
+.os-windows .glass-window {
+  box-shadow: inset 0 1px 0 var(--border-glass-highlight);
+}
+.no-native-glass .glass-window {
+  background: var(--surface-window-solid);
+}
+
+/* Glass card with gradient edge (top bright, bottom faint). */
+.glass-card {
+  position: relative;
+  background: var(--surface-card);
+  border-radius: var(--radius-qr-card);
+  -webkit-backdrop-filter: blur(var(--blur-card)) saturate(180%);
+  backdrop-filter: blur(var(--blur-card)) saturate(180%);
+  box-shadow:
+    inset 0 1px 0 var(--border-glass-highlight),
+    var(--shadow-card);
+}
+.glass-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  padding: 1px;
+  border-radius: inherit;
+  background: linear-gradient(180deg, var(--border-glass-highlight), var(--border-glass-shadow));
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+@layer components {
+  /* Neutral glass control: secondary buttons and the round close button.
+     A class, not inline styles, so the hover background can win. */
+  .glass-control {
+    background: var(--surface-control);
+    box-shadow: inset 0 0 0 1px var(--border-control);
+  }
+  .glass-control:hover {
+    background: var(--surface-control-hover);
+  }
+
+  /* Primary button: accent gradient with white text. */
+  .accent-fill {
+    color: var(--color-on-accent);
+    background: linear-gradient(180deg, var(--color-accent-from), var(--color-accent-to));
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.35),
+      0 4px 12px var(--color-accent-shadow);
+  }
+
+  /* Round or rounded app tile with the brand gradient (drop zone, welcome). */
+  .accent-tile {
+    background: linear-gradient(135deg, var(--color-accent-from), var(--color-badge-to));
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.4),
+      var(--shadow-accent);
+  }
+}
+
+.focus-ring:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+@keyframes glow-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+/* Four small steps per second instead of 60 frames: every frame re-blurs the
+   glow and the glass card above it (~0.5 CPU cores when smooth). Behind
+   48 px of blur the steps are not visible. */
+.glow-spin {
+  animation: glow-spin 24s steps(96) infinite;
+}
+
+@keyframes shimmer {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+.shimmer {
+  animation: shimmer 1.4s var(--ease-out-expo) infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.spin {
+  animation: spin 0.9s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glow-spin,
+  .shimmer,
+  .spin {
+    animation: none;
+  }
+}

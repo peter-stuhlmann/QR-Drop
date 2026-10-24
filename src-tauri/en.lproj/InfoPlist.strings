@@ -1,0 +1,3 @@
+/* English texts of Info.plist (copied into Contents/Resources by tauri.macos.conf.json). */
+"File or folder" = "File or folder";
+"NSLocalNetworkUsageDescription" = "QR Drop sends files over your Wi-Fi straight to your phone.";

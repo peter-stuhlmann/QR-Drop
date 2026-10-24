@@ -1,0 +1,10 @@
+dist
+src-tauri/target
+src-tauri/gen
+pnpm-lock.yaml
+node_modules
+# Phone pages: Prettier would merge the __COMMON_CSS__ marker into the first
+# CSS selector, and its expanded CSS would push the rendered pages over the
+# 30 KB budget (CLAUDE.md §7.3). landing/common.js is formatted.
+landing/*.html
+landing/common.css

@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "welcome",
+  "description": "Willkommensfenster (macOS, erster Start): nur bestätigen.",
+  "windows": ["welcome"],
+  "permissions": ["allow-finish-welcome"]
+}

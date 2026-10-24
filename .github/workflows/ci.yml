@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  # Branches are checked through their pull request; main after each merge.
+  push:
+    branches: [main]
+  pull_request:
+  # Weekly installer build, so NSIS/DMG problems surface before a release tag.
+  schedule:
+    - cron: "0 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  # Superseded pull request runs are pointless; runs on main all finish.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  check:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: lts/*
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: src-tauri -> target
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Lint, format & typecheck
+        run: |
+          pnpm lint
+          pnpm format:check
+          pnpm typecheck
+
+      - name: Frontend tests
+        run: pnpm test
+
+      # tauri::generate_context! (clippy, tests) needs the built frontend.
+      - name: Build frontend
+        run: pnpm build
+
+      - name: cargo fmt
+        working-directory: src-tauri
+        run: cargo fmt --check
+
+      - name: cargo clippy
+        working-directory: src-tauri
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: cargo test
+        working-directory: src-tauri
+        run: cargo test
+
+      # Pull requests stay fast (binary only); main, the weekly run and manual
+      # runs also build the installers. The frontend is already built above,
+      # so the beforeBuildCommand is removed (JSON merge patch: null deletes).
+      - name: Tauri smoke build (debug)
+        shell: bash
+        run: >-
+          pnpm tauri build --debug
+          ${{ github.event_name == 'pull_request' && '--no-bundle' || '' }}
+          --config '{"build":{"beforeBuildCommand":null}}'

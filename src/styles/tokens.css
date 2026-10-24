@@ -1,0 +1,94 @@
+/*
+ * Design tokens -- the single source of every colour, radius and size the
+ * components use. 
+ */
+:root {
+  /* Basis */
+  --color-accent: oklch(0.68 0.17 275);
+  /* Primary button / highlight gradient: white text needs >= 4.5:1 on both
+     stops (WCAG AA for 13-14 px text): #6062ec 4.7:1, #5a50dc 5.8:1. */
+  --color-accent-from: #6062ec;
+  --color-accent-to: #5a50dc;
+  --color-accent-shadow: rgb(102 89 242 / 0.5);
+  --color-badge-to: #9e5cf2;
+  --color-glow-magenta: #cc66f2;
+  --color-glow-cyan: #4dccf2;
+  /* Second gradient stops of the status icons (success, warning, danger). */
+  --color-glow-teal: #33bfa6;
+  --color-glow-orange: #ff8059;
+  --color-glow-pink: #f24d8c;
+  /* Neutral tile of files without a known type. */
+  --color-file-from: #999eb3;
+  --color-file-to: #6b6b85;
+  --color-success: #4dd98c;
+  --color-warning: #ffb84d;
+  --color-danger: #ff6b6b;
+  --color-on-accent: #ffffff;
+  --color-qr-bg: #ffffff;
+  /* Dims the window behind a dialog (both themes). */
+  --surface-scrim: rgb(0 0 0 / 0.25);
+
+  --radius-window: 20px;
+  --radius-card: 16px;
+  --radius-qr-card: 22px;
+  --radius-qr-plate: 14px;
+  /* At the 44 px file tile; smaller tiles scale it down. */
+  --radius-badge: 12px;
+
+  /* White plate with quiet zone around the 208 px code (§7.2: >= 240 px). */
+  --size-qr-plate: 256px;
+  --size-qr-code: 208px;
+
+  --blur-card: 24px;
+
+  --font-size-filename: 17px;
+  --font-size-body: 14px;
+  --font-size-caption: 13px;
+  --font-size-title: 20px;
+  --font-family-ui:
+    -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+
+  /* Twin of EASE_OUT_EXPO in src/lib/motion.ts. */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --shadow-accent: 0 8px 24px var(--color-accent-shadow);
+
+  /* Theme / Light */
+  --surface-window: rgb(255 255 255 / 0.62);
+  --surface-window-solid: rgb(246 246 251 / 0.97);
+  --surface-card: rgb(255 255 255 / 0.55);
+  --surface-control: rgb(20 20 31 / 0.05);
+  --surface-control-hover: rgb(20 20 31 / 0.09);
+  --border-control: rgb(20 20 31 / 0.08);
+  --border-glass-highlight: rgb(255 255 255 / 0.95);
+  --border-glass-shadow: rgb(255 255 255 / 0.35);
+  --text-primary: rgb(20 20 31 / 0.92);
+  --text-secondary: rgb(20 20 31 / 0.62);
+  /* 0.6 keeps >= 4.5:1 on light glass for the 12-13 px texts using it. */
+  --text-tertiary: rgb(20 20 31 / 0.6);
+  --text-link: #5457db;
+  --icon-default: rgb(20 20 31 / 0.7);
+  --progress-track: rgb(20 20 31 / 0.08);
+  --shadow-card: 0 10px 30px rgb(64 64 128 / 0.12);
+  --glow-opacity: 0.35;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface-window: rgb(26 26 33 / 0.58);
+    --surface-window-solid: rgb(28 28 36 / 0.96);
+    --surface-card: rgb(255 255 255 / 0.1);
+    --surface-control: rgb(255 255 255 / 0.1);
+    --surface-control-hover: rgb(255 255 255 / 0.16);
+    --border-control: rgb(255 255 255 / 0.14);
+    --border-glass-highlight: rgb(255 255 255 / 0.3);
+    --border-glass-shadow: rgb(255 255 255 / 0.04);
+    --text-primary: rgb(255 255 255 / 0.96);
+    --text-secondary: rgb(235 235 245 / 0.62);
+    --text-tertiary: rgb(235 235 245 / 0.55);
+    --text-link: #adb0ff;
+    --icon-default: rgb(255 255 255 / 0.8);
+    --progress-track: rgb(255 255 255 / 0.14);
+    --shadow-card: 0 10px 30px rgb(0 0 0 / 0.25);
+    --glow-opacity: 0.55;
+  }
+}

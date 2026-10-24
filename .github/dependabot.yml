@@ -1,0 +1,14 @@
+# Keeps the SHA-pinned actions in .github/workflows current. A new release is
+# only proposed after 14 days, so a compromised version is usually caught
+# and withdrawn before it reaches the build.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 14
+    groups:
+      actions:
+        patterns: ["*"]

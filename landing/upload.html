@@ -1,0 +1,535 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="robots" content="noindex">
+<title>QR Drop</title>
+<style>
+__COMMON_CSS__
+/* Upload page (phone → computer): files and texts. */
+:root{--bad:#ff6b6b}
+h2{font-size:16px;font-weight:600;align-self:flex-start}
+.meta b{color:#fff;font-weight:600}
+.lead{align-self:flex-start;margin-top:-6px}
+.btn.ghost{min-height:52px;font-size:16px}
+.btn[disabled]{opacity:.5}
+.pick{position:relative}
+.pick input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+/* The real file input is invisible: show its focus on the label instead. */
+.pick:focus-within{outline:3px solid #fff;outline-offset:3px}
+.list{width:100%;display:flex;flex-direction:column;gap:8px;text-align:left}
+.item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:14px;background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.1)}
+.item .info{flex:1;min-width:0}
+.item .name{font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item .sub{font-size:12px;color:var(--text-2);font-variant-numeric:tabular-nums}
+.bar{height:4px;border-radius:2px;background:rgba(255,255,255,.14);margin-top:6px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;border-radius:inherit;background:linear-gradient(90deg,var(--accent-from),#9e5cf2);transition:width .2s ease}
+.state{flex:none;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.12)}
+.state svg{width:14px;height:14px;stroke:#fff;stroke-width:3}
+.item.done .state,.summary.ok .state{background:var(--ok)}
+.item.failed{cursor:pointer;border-color:rgba(255,107,107,.45)}
+.item.failed .state{background:var(--bad)}
+.item.failed .sub{color:#ffb3b3}
+.item.failed:focus-visible{outline:3px solid #fff;outline-offset:2px}
+.item.done .bar,.item.failed .bar{display:none}
+.summary{display:flex;align-items:center;gap:8px;font-weight:600;font-size:15px;font-variant-numeric:tabular-nums}
+.summary.ok{color:#8cf2b3}
+textarea{width:100%;min-height:96px;max-height:40vh;resize:vertical;padding:12px 14px;border-radius:16px;border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.22);color:var(--text);font-family:inherit;font-size:16px;line-height:1.45}
+textarea::placeholder{color:var(--text-3)}
+textarea:focus{outline:2px solid var(--accent-from);outline-offset:1px}
+@media (prefers-reduced-motion:reduce){.bar i{transition:none}}
+</style>
+</head>
+<body>
+<script id="share-data" type="application/json">__SHARE_DATA__</script>
+<main>
+  <div class="brand"><svg viewBox="0 0 24 24"><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16h-3a2 2 0 0 0-2 2v3M12 7v3a2 2 0 0 1-2 2H7M16 12h1M12 21v-1"/></svg>QR Drop</div>
+
+  <section class="card" id="files" hidden>
+    <div class="tile"><svg viewBox="0 0 24 24"><path d="m9 10 3-3 3 3M12 13V7"/><rect width="20" height="14" x="2" y="3" rx="2"/><path d="M12 17v4M8 21h8"/></svg></div>
+    <h1 data-t="title"></h1>
+    <p class="meta" id="where"></p>
+    <label class="btn pick">
+      <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></svg>
+      <span id="picklabel" data-t="pick"></span>
+      <input type="file" id="pick" multiple>
+    </label>
+    <div class="summary" id="summary" aria-live="polite" hidden></div>
+    <div class="list" id="list"></div>
+    <p class="small" id="note" data-t="keepAwake" hidden></p>
+  </section>
+
+  <section class="card" id="textcard" hidden>
+    <h2 data-t="textTitle"></h2>
+    <p class="small lead" data-t="textWhere"></p>
+    <textarea id="text" rows="3" data-ph="textPlaceholder"></textarea>
+    <button class="btn ghost" id="sendtext" type="button">
+      <svg viewBox="0 0 24 24"><rect width="8" height="4" x="8" y="2" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>
+      <span id="textlabel" data-t="sendText"></span>
+    </button>
+    <p class="small" id="textnote" aria-live="polite" hidden></p>
+  </section>
+
+  <section class="card" id="gone" hidden>
+    <div class="tile expired"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div>
+    <h1 id="goneTitle"></h1>
+    <p class="meta" id="goneText"></p>
+  </section>
+</main>
+<footer><svg viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><span data-t="local"></span></footer>
+
+<script>
+(function(){
+  "use strict";
+  __COMMON_JS__
+
+  var t = setUpTexts({
+    de: {
+      title: "An den Computer senden",
+      whereBefore: "Fotos, Videos und Dateien landen im Ordner „", whereAfter: "“.",
+      pick: "Dateien auswählen", pickMore: "Weitere Dateien auswählen",
+      keepAwake: "Am besten das Handy nicht sperren – bricht es ab, geht es danach an derselben Stelle weiter.",
+      unnamed: "Datei", waiting: "Wartet …", sent: "Gesendet", retry: "Zum Wiederholen tippen.",
+      resuming: "Verbindung unterbrochen – geht gleich weiter …",
+      sending: function(i, n){ return "Sende " + i + " von " + n + " …"; },
+      allSent: function(n){ return n === 1 ? "1 Datei gesendet" : n + " Dateien gesendet"; },
+      failed: function(n){ return n + " fehlgeschlagen"; },
+      errors: {
+        disk_full: "Auf dem Computer ist nicht genug Speicherplatz.",
+        too_large: "Die Datei ist zu groß für den Computer.",
+        too_many: "Zu viele Dateien auf einmal.",
+        incomplete: "Die Datei kam nicht vollständig an.",
+        generic: "Der Computer konnte die Datei nicht speichern."
+      },
+      textTitle: "Text senden",
+      textWhere: "Landet in der Zwischenablage des Computers.",
+      textPlaceholder: "Text oder Link hier einfügen …",
+      sendText: "Zum Computer kopieren",
+      textSent: "Kopiert ✓",
+      textSentNote: "Der Text liegt jetzt in der Zwischenablage des Computers – dort einfach einfügen.",
+      textTooLong: "Der Text ist zu lang (höchstens 1 MB).",
+      textFail: "Das hat nicht geklappt. Bitte noch einmal versuchen.",
+      goneText: "Öffne am Computer einfach noch einmal „Vom Handy empfangen“ und scanne den neuen QR-Code."
+    },
+    en: {
+      title: "Send to your computer",
+      whereBefore: "Photos, videos and files are saved to the “", whereAfter: "” folder.",
+      pick: "Choose files", pickMore: "Choose more files",
+      keepAwake: "Best keep your phone unlocked – if it stops, it continues where it left off.",
+      unnamed: "File", waiting: "Waiting …", sent: "Sent", retry: "Tap to try again.",
+      resuming: "Connection lost – resuming shortly …",
+      sending: function(i, n){ return "Sending " + i + " of " + n + " …"; },
+      allSent: function(n){ return n === 1 ? "1 file sent" : n + " files sent"; },
+      failed: function(n){ return n + " failed"; },
+      errors: {
+        disk_full: "There is not enough space on the computer.",
+        too_large: "The file is too large for the computer.",
+        too_many: "Too many files at once.",
+        incomplete: "The file did not arrive completely.",
+        generic: "The computer could not save the file."
+      },
+      textTitle: "Send text",
+      textWhere: "It goes to the computer's clipboard.",
+      textPlaceholder: "Paste text or a link here …",
+      sendText: "Copy to computer",
+      textSent: "Copied ✓",
+      textSentNote: "The text is now in the computer's clipboard – just paste it there.",
+      textTooLong: "The text is too long (1 MB at most).",
+      textFail: "That didn't work. Please try again.",
+      goneText: "Simply open “Receive from phone” on your computer again and scan the new QR code."
+    }
+  });
+
+  /* Row icons per state (Lucide paths). */
+  var ICONS = { done: "M20 6 9 17l-5-5", failed: "M12 8v5M12 16.5v.01", waiting: "M12 19V5M5 12l7-7 7 7" };
+  function icon(state) {
+    return '<svg viewBox="0 0 24 24"><path d="' + (ICONS[state] || ICONS.waiting) + '"/></svg>';
+  }
+
+  /* Pauses before automatic retries, in seconds (about two minutes in total). */
+  var RETRY_DELAYS = [1, 2, 4, 8, 15, 15, 20, 20, 30];
+  /* No progress for this long: the upload is stuck (Wi-Fi switch, phone
+     locked) and gets aborted and resumed. */
+  var STALL_MS = 20000;
+  /* After the last byte the computer still flushes the file to disk. */
+  var REPLY_MS = 60000;
+  var STALL_AFTER_WAKE_MS = 5000; // back in the foreground
+  /* Answers a retry cannot fix, with the fallback message key. */
+  var PERMANENT_ERRORS = { 400: "incomplete", 413: "too_large", 429: "too_many", 507: "disk_full" };
+  var MAX_TEXT_BYTES = 1024 * 1024; // as on the computer
+
+  var data = readShareData();
+
+  /* ---- Files ----
+     Sent one after the other as raw request bodies, so the computer streams
+     them straight to disk. If the connection drops, the computer keeps what
+     arrived and the page resumes there (see fileKey).
+     item.state: waiting | sending | retrying | done | failed */
+  var items = [];
+  var currentItem = null;
+  var busy = false;
+  /* Finished requests' bytes and time, for the speed (retry pauses excluded). */
+  var meter = { bytes: 0, ms: 0 };
+  var sessionGone = false;
+
+  function showGone() {
+    sessionGone = true;
+    if (currentItem && currentItem.xhr) currentItem.xhr.abort();
+    showGoneCard(t.goneTitle, t.goneText);
+  }
+
+  /* Names a file across page reloads (name + size + date): a reloaded page
+     resumes it and the computer recognizes a file it already saved.
+     2×32-bit hash (cyrb53 style). */
+  function fileKey(file) {
+    var input = file.name + "\n" + file.size + "\n" + file.lastModified;
+    var h1 = 0xdeadbeef;
+    var h2 = 0x41c6ce57;
+    for (var i = 0; i < input.length; i++) {
+      var c = input.charCodeAt(i);
+      h1 = Math.imul(h1 ^ c, 2654435761);
+      h2 = Math.imul(h2 ^ c, 1597334677);
+    }
+    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+    h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+    return "f" + hex32(h2) + hex32(h1);
+  }
+
+  function hex32(n) {
+    return ("0000000" + (n >>> 0).toString(16)).slice(-8);
+  }
+
+  function findItem(key) {
+    for (var i = 0; i < items.length; i++) {
+      if (items[i].key === key) return items[i];
+    }
+    return null;
+  }
+
+  function addFiles(files) {
+    for (var i = 0; i < files.length; i++) {
+      var key = fileKey(files[i]);
+      var known = findItem(key);
+      // Picked again: retry if it failed, never list twice.
+      if (known) { retry(known); continue; }
+      items.push(createItem(files[i], key));
+    }
+    byId("picklabel").textContent = t.pickMore;
+    byId("note").hidden = false;
+    if (!busy) next();
+  }
+
+  function createItem(file, key) {
+    var row = document.createElement("div");
+    row.innerHTML = '<span class="state"></span><div class="info"><div class="name"></div><div class="sub"></div><div class="bar"><i></i></div></div>';
+    row.querySelector(".name").textContent = file.name || t.unnamed;
+    byId("list").appendChild(row);
+    var item = { file: file, key: key, row: row, loaded: 0, tries: 0, timer: 0, xhr: null };
+    setWaiting(item);
+    // Failed rows act as buttons: tap, Enter or Space retries.
+    row.addEventListener("click", function() { retry(item); });
+    row.addEventListener("keydown", function(e) {
+      if (item.state !== "failed" || (e.key !== "Enter" && e.key !== " ")) return;
+      e.preventDefault();
+      retry(item);
+    });
+    return item;
+  }
+
+  /* Shows an item's state in its row; failed rows become focusable buttons. */
+  function setState(item, state, subText) {
+    var row = item.row;
+    item.state = state;
+    row.className = state === "done" || state === "failed" ? "item " + state : "item";
+    row.querySelector(".state").innerHTML = icon(state);
+    if (state === "failed") { row.setAttribute("role", "button"); row.tabIndex = 0; }
+    else { row.removeAttribute("role"); row.removeAttribute("tabindex"); }
+    if (subText) row.querySelector(".sub").textContent = subText;
+  }
+
+  function retry(item) {
+    if (item.state !== "failed") return;
+    item.tries = item.loaded = 0; // the space check then asks for the whole file
+    setWaiting(item);
+    if (!busy) next();
+  }
+
+  function setWaiting(item) {
+    setState(item, "waiting", formatSize(item.file.size) + " · " + t.waiting);
+  }
+
+  /* Position and bytes of an item in the batch. Failed files do not count,
+     so the computer's total stays honest. */
+  function batchInfo(item) {
+    var info = { index: 0, count: 0, bytesBefore: 0, totalBytes: 0 };
+    for (var i = 0; i < items.length; i++) {
+      var other = items[i];
+      if (other.state === "failed") continue;
+      info.count++;
+      info.totalBytes += other.file.size;
+      if (other === item) info.index = info.count;
+      else if (!info.index) info.bytesBefore += other.file.size;
+    }
+    return info;
+  }
+
+  function currentSpeed() {
+    var bytes = meter.bytes, ms = meter.ms;
+    if (currentItem && currentItem.xhr) {
+      bytes += currentItem.loaded - currentItem.sendFrom;
+      ms += Date.now() - currentItem.sendStartedAt;
+    }
+    return ms > 500 ? (bytes / ms) * 1000 : 0;
+  }
+
+  /* Ends the running request of an item and books it for the speed. */
+  function endTransfer(item) {
+    if (!item.xhr) return;
+    meter.bytes += item.loaded - item.sendFrom;
+    meter.ms += Date.now() - item.sendStartedAt;
+    item.xhr = null;
+  }
+
+  function updateSummary() {
+    var done = 0, failed = 0;
+    for (var i = 0; i < items.length; i++) {
+      if (items[i].state === "done") done++;
+      else if (items[i].state === "failed") failed++;
+    }
+    var summary = byId("summary");
+    summary.hidden = items.length === 0;
+    if (busy) {
+      summary.className = "summary";
+      if (currentItem.state === "retrying") {
+        summary.textContent = t.resuming;
+      } else {
+        var info = batchInfo(currentItem);
+        var speed = currentSpeed();
+        summary.textContent = t.sending(info.index, info.count) + (speed ? " · " + formatSize(speed) + "/s" : "");
+      }
+      return;
+    }
+    summary.className = failed ? "summary" : "summary ok";
+    summary.innerHTML = failed ? "" : '<span class="state">' + icon("done") + "</span>";
+    summary.appendChild(document.createTextNode(t.allSent(done) + (failed ? " · " + t.failed(failed) : "")));
+    byId("note").hidden = true;
+  }
+
+  function next() {
+    if (sessionGone) return;
+    currentItem = null;
+    for (var i = 0; i < items.length; i++) {
+      if (items[i].state === "waiting") { currentItem = items[i]; break; }
+    }
+    if (!currentItem) { busy = false; updateSummary(); return; }
+    if (!busy) { busy = true; meter = { bytes: 0, ms: 0 }; }
+    checkSpace(currentItem);
+  }
+
+  /* Does the file fit? A refused upload would look like a broken connection. */
+  function checkSpace(item) {
+    setState(item, "sending");
+    updateSummary();
+    var missing = Math.max(0, item.file.size - item.loaded);
+    fetch(sharePath + "/check?size=" + missing, { cache: "no-store" }).then(function(res) {
+      if (res.ok) askOffset(item);
+      else handleErrorAnswer(item, res);
+    }, function() { retryLater(item); });
+  }
+
+  /* How much does the computer already have (dropped connection, reload)? */
+  function askOffset(item) {
+    fetch(sharePath + "/upload?key=" + item.key, { cache: "no-store" }).then(function(res) {
+      if (!res.ok) { handleErrorAnswer(item, res); return; }
+      res.json().then(function(answer) {
+        // Saved already: its answer got lost (e.g. reload).
+        if (answer.done) finish(item, answer.name);
+        else send(item, answer.offset || 0);
+      }, function() { retryLater(item); });
+    }, function() { retryLater(item); });
+  }
+
+  function handleErrorAnswer(item, res) {
+    res.json().then(
+      function(answer) { handleError(item, res.status, answer && answer.error); },
+      function() { handleError(item, res.status, ""); }
+    );
+  }
+
+  function handleError(item, status, code) {
+    if (status === 404 || status === 410) { showGone(); return; }
+    if (status >= 500 && !PERMANENT_ERRORS[status]) { retryLater(item); return; }
+    fail(item, t.errors[code] || t.errors[PERMANENT_ERRORS[status]] || t.errors.generic);
+    next();
+  }
+
+  function retryLater(item) {
+    endTransfer(item);
+    if (sessionGone) return;
+    if (item.tries >= RETRY_DELAYS.length) { fail(item, t.offline); next(); return; }
+    setState(item, "retrying", t.resuming);
+    item.timer = setTimeout(function() { item.timer = 0; askOffset(item); }, RETRY_DELAYS[item.tries++] * 1000);
+    updateSummary();
+  }
+
+  function fail(item, message) {
+    endTransfer(item);
+    setState(item, "failed", message + " " + t.retry);
+  }
+
+  function finish(item, savedName) {
+    item.loaded = item.file.size;
+    setState(item, "done", formatSize(item.file.size) + " · " + t.sent);
+    if (savedName) item.row.querySelector(".name").textContent = savedName;
+    next();
+  }
+
+  function showProgress(item) {
+    var size = item.file.size;
+    item.row.querySelector(".bar i").style.width = (size ? Math.round((item.loaded / size) * 100) : 100) + "%";
+    item.row.querySelector(".sub").textContent = formatSize(item.loaded) + " / " + formatSize(size);
+  }
+
+  function send(item, from) {
+    var size = item.file.size;
+    var info = batchInfo(item);
+    from = Math.min(from, size);
+    var query = "?name=" + encodeURIComponent(item.file.name) + "&i=" + info.index + "&n=" + info.count +
+      "&total=" + info.totalBytes + "&offset=" + info.bytesBefore + "&key=" + item.key + "&size=" + size + "&from=" + from;
+    var xhr = new XMLHttpRequest();
+    item.xhr = xhr;
+    item.sendFrom = item.loaded = from;
+    item.sendStartedAt = item.lastProgress = Date.now();
+    item.replyPending = false;
+    setState(item, "sending");
+    showProgress(item);
+
+    xhr.open("POST", sharePath + "/upload" + query);
+    xhr.setRequestHeader("Content-Type", "application/octet-stream");
+    // Events of an older, replaced request are ignored.
+    xhr.upload.onprogress = function(e) {
+      if (item.xhr !== xhr) return;
+      item.lastProgress = Date.now();
+      if (!e.lengthComputable) return;
+      item.loaded = from + e.loaded;
+      if (e.loaded > 0) item.tries = 0;
+      showProgress(item);
+      updateSummary();
+    };
+    xhr.upload.onload = function() {
+      if (item.xhr !== xhr) return;
+      item.replyPending = true;
+      item.lastProgress = Date.now();
+    };
+    xhr.onload = function() {
+      if (item.xhr !== xhr) return;
+      endTransfer(item);
+      handleUploadAnswer(item, xhr);
+    };
+    xhr.onerror = xhr.onabort = function() {
+      if (item.xhr === xhr) retryLater(item);
+    };
+    xhr.send(from > 0 ? item.file.slice(from) : item.file);
+    updateSummary();
+  }
+
+  function handleUploadAnswer(item, xhr) {
+    var answer = {};
+    try { answer = JSON.parse(xhr.responseText) || {}; } catch (e) { answer = {}; }
+    if (xhr.status === 201) {
+      finish(item, answer.name);
+    } else if (xhr.status === 202 || xhr.status === 409) {
+      // The computer has a different amount than expected: continue there.
+      if (++item.tries > RETRY_DELAYS.length) { fail(item, t.errors.generic); next(); }
+      else send(item, answer.offset || 0);
+    } else {
+      handleError(item, xhr.status, answer.error);
+    }
+  }
+
+  function abortIfStalled(item, limitMs) {
+    if (item.xhr && Date.now() - item.lastProgress > limitMs) item.xhr.abort();
+  }
+
+  setInterval(function() {
+    if (currentItem) abortIfStalled(currentItem, currentItem.replyPending ? REPLY_MS : STALL_MS);
+  }, 5000);
+
+  /* Back from the lock screen or another app: retry at once, and drop an
+     upload that went quiet while the page was hidden. */
+  document.addEventListener("visibilitychange", function() {
+    if (document.visibilityState !== "visible" || !currentItem) return;
+    if (currentItem.state === "retrying" && currentItem.timer) {
+      clearTimeout(currentItem.timer);
+      currentItem.timer = 0;
+      askOffset(currentItem);
+    } else if (!currentItem.replyPending) {
+      abortIfStalled(currentItem, STALL_AFTER_WAKE_MS);
+    }
+  });
+
+  /* ---- Text ---- */
+
+  function setUpTextSending() {
+    var field = byId("text");
+    var button = byId("sendtext");
+    var label = byId("textlabel");
+    var note = byId("textnote");
+    var showNote = function(text) {
+      note.textContent = text;
+      note.hidden = false;
+    };
+    button.addEventListener("click", function() {
+      var value = field.value;
+      if (!value.trim()) { field.focus(); return; }
+      // Blob counts UTF-8 bytes, like the computer does.
+      if (new Blob([value]).size > MAX_TEXT_BYTES) { showNote(t.textTooLong); return; }
+      button.disabled = true;
+      fetch(sharePath + "/text", {
+        method: "POST", body: value, cache: "no-store",
+        headers: { "Content-Type": "text/plain;charset=utf-8" }
+      }).then(function(res) {
+        button.disabled = false;
+        if (res.status === 404 || res.status === 410) { showGone(); return; }
+        if (res.status === 413) { showNote(t.textTooLong); return; }
+        if (res.status !== 204) { showNote(t.textFail); return; }
+        button.classList.add("ok");
+        label.textContent = t.textSent;
+        showNote(t.textSentNote);
+        field.value = "";
+        setTimeout(function() { button.classList.remove("ok"); label.textContent = t.sendText; }, 2500);
+      }, function() {
+        button.disabled = false;
+        showNote(t.textFail);
+      });
+    });
+  }
+
+  /* ---- Start ---- */
+
+  if (!data.valid) {
+    showGone();
+  } else {
+    byId("files").hidden = false;
+    byId("textcard").hidden = false;
+    // The folder name comes from the computer: insert it as text, never as markup.
+    var folder = document.createElement("b");
+    folder.textContent = data.folder || "Downloads";
+    var where = byId("where");
+    where.textContent = t.whereBefore;
+    where.appendChild(folder);
+    where.appendChild(document.createTextNode(t.whereAfter));
+
+    byId("pick").addEventListener("change", function() {
+      var files = Array.prototype.slice.call(this.files || []);
+      this.value = "";
+      if (files.length) addFiles(files);
+    });
+    setUpTextSending();
+  }
+})();
+</script>
+</body>
+</html>
